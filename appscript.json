@@ -1,0 +1,15 @@
+{
+  "timeZone": "America/New_York",
+  "dependencies": {
+  },
+  "dataStudio": {
+    "name": "City of Asheville - Data Library",
+    "logoUrl": "https://simplicity.ashevillenc.gov/ae74a8de114ea1a9fa7db46ba001c452.png",
+    "company": "City of Asheville",
+    "companyUrl": "https://ashevillenc.gov",
+    "addonUrl": "https://github.com/google/datastudio/tree/master/community-connectors/coa-data-library",
+    "supportUrl": "https://github.com/google/datastudio/issues",
+    "description": "City of Ashevile Data Library.",
+    "sources": ["graphql"]
+  }
+}
