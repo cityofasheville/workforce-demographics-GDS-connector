@@ -1,4 +1,5 @@
 var cc = DataStudioApp.createCommunityConnector();
+var userProperties = PropertiesService.getUserProperties();
 
 // https://developers.google.com/datastudio/connector/reference#getauthtype
 function getAuthType() {
@@ -54,42 +55,42 @@ function getFields() {
         .setName('Hispanic')
         .setGroup('Ethnicity')
         .setType(types.BOOLEAN);
+    /**
+     fields
+     .newMetric()
+     .setId('race_asian')
+     .setName('Asian')
+     .setGroup('Race')
+     .setType(types.BOOLEAN);
 
-    fields
-        .newMetric()
-        .setId('race_asian')
-        .setName('Asian')
-        .setGroup('Race')
-        .setType(types.BOOLEAN);
+     fields
+     .newMetric()
+     .setId('race_black')
+     .setName('Black')
+     .setGroup('Race')
+     .setType(types.BOOLEAN);
 
-    fields
-        .newMetric()
-        .setId('race_black')
-        .setName('Black')
-        .setGroup('Race')
-        .setType(types.BOOLEAN);
+     fields
+     .newMetric()
+     .setId('race_native')
+     .setName('Native')
+     .setGroup('Race')
+     .setType(types.BOOLEAN);
 
-    fields
-        .newMetric()
-        .setId('race_native')
-        .setName('Native')
-        .setGroup('Race')
-        .setType(types.BOOLEAN);
+     fields
+     .newMetric()
+     .setId('race_pacific')
+     .setName('Pacific')
+     .setGroup('Race')
+     .setType(types.BOOLEAN);
 
-    fields
-        .newMetric()
-        .setId('race_pacific')
-        .setName('Pacific')
-        .setGroup('Race')
-        .setType(types.BOOLEAN);
-
-    fields
-        .newMetric()
-        .setId('race_white')
-        .setName('White')
-        .setGroup('Race')
-        .setType(types.BOOLEAN);
-
+     fields
+     .newMetric()
+     .setId('race_white')
+     .setName('White')
+     .setGroup('Race')
+     .setType(types.BOOLEAN);
+     **/
     fields
         .newMetric()
         .setId('age')
@@ -106,7 +107,13 @@ function getFields() {
         .newDimension()
         .setId('data_id')
         .setName('Data Identifier')
-        .setType(types.TEXT)
+        .setType(types.TEXT);
+
+    fields
+        .newDimension()
+        .setId('position_races')
+        .setName('Race')
+        .setType(types.TEXT);
 
     return fields;
 }
@@ -115,7 +122,7 @@ function getFields() {
 function getSchema(request) {
     try {
         return {schema: getFields().build()};
-    } catch (e) {
+    } catch(e) {
         console.log(e)
     }
 }
@@ -127,7 +134,7 @@ function getData(request) {
     //get our schema
     var schema = getSchema(request)
     // Sort and filter by requested fields
-    request.fields.forEach(function (field) {
+    request.fields.forEach(function(field) {
         for (var i = 0; i < schema['schema'].length; i++) {
             if (schema['schema'][i].name === field.name) {
                 dataSchema.push(schema['schema'][i]);
@@ -135,14 +142,16 @@ function getData(request) {
             }
         }
     });
-
     try {
         // get the fields requested from the request object
-        var colNames = request.fields.map(function (field) {
+        /**
+         var colNames = request.fields.map(function (field) {
             return field.name
         });
-        // compose query string
-        var recordquery = '{"query": "{ internal_demographics_by_position {' + colNames.join(' ') + '}}"}';
+         **/
+            // compose query string
+        var recordquery = '{"query": "{ internal_demographics_by_position {Department age data_id est_years_of_service ethnicity_hispanic gender position position_races {race}} }"}';
+        //console.log(recordquery)
         // create the fetch object
         var fetchoptions = {
             'method': 'post',
@@ -151,27 +160,69 @@ function getData(request) {
         };
 
         //store url in properties for now
-        var url = PropertiesService.getScriptProperties().getProperty('url');
+        var properties = PropertiesService.getScriptProperties();
+        var url = properties.getProperty('apiurl');
         var response = UrlFetchApp.fetch(url, fetchoptions);
-        //console.log(response)
+        // console.log(response)
         var parsedResponse = JSON.parse(response).data.internal_demographics_by_position;
 
+        // console.log(JSON.stringify(parsedResponse))
+
         // filter for requested fields
-        var requestedData = parsedResponse.map(function (item) {
+        // var requestedData = parsedResponse.map(function(item) {
+        var requestedData = [];
+        parsedResponse.forEach(function(item) {
+            //console.log(item.gender)
             // set up our return array
-            var values = []
+            var values = [];
+            var race = '';
+            var races = [];
             // loop through the requested fields
-            dataSchema.forEach(function (field) {
-                if (!!item[field.name]) {
-                    values.push(item[field.name]);
-                } else {
-                    values.push('');
+            dataSchema.forEach(function(field) {
+                //console.log(field.name);
+                switch (field.name) {
+                    case 'position_races':
+                        item.position_races.forEach(function(race) {
+                            races.push(race.race)
+                            //console.log(races.join());
+                        });
+                        values.push(races.join());
+                        break;
+                    case 'Department':
+                        values.push(item.Department);
+                        break;
+                    case 'position':
+                        values.push(item.position);
+                        break;
+                    case 'gender':
+                        values.push(item.gender);
+                        break;
+                    case 'ethnicity_hispanic':
+                        values.push(item.ethnicity_hispanic);
+                        break;
+                    case 'age':
+                        values.push(item.age);
+                        break;
+                    case 'est_years_of_service':
+                        values.push(item.est_years_of_service);
+                        break;
+                    case 'data_id':
+                        values.push(item.data_id);
+                        break;
+                    default:
+                        values.push('');
                 }
             });
 
-            return {values: values};
+            requestedData.push({
+                values: values
+            });
+            //console.log(values);
+            return requestedData;
         });
-        console.log(JSON.stringify(requestedData))
+
+
+        console.log(JSON.stringify(dataSchema,requestedData))
         return {
             schema: dataSchema,
             rows: requestedData
